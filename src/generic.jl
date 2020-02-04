@@ -30,11 +30,17 @@ Writes an array of Avro objects if there is a
 write(Encoder, typeof(ArraySchema.items), T) method.
 """
 function write(encoder::Encoder, schema::ArraySchema, value::Vector{T}) where T
-    bytes_written = encode_long(encoder, Int64(length(value)))
+    # "A block with count zero indicates the end of the array."
+    # [https://avro.apache.org/docs/current/spec.html]
+    l = Int64(length(value))
+    bytes_written = encode_long(encoder, l)
     for item in value
         bytes_written += write(encoder, schema.items, item)
     end
-    bytes_written += encode_byte(encoder, zero(UInt8))
+    # If the first block was nonzero, create an empty 2nd block.
+    if l != 0
+        bytes_written += encode_byte(encoder, zero(UInt8))
+    end
     bytes_written
 end
 
@@ -43,12 +49,18 @@ Writes a map of Avro objects if there is a
 write(Encoder, typeof(MapSchema.values), T) method.
 """
 function write(encoder::Encoder, schema::MapSchema, value::Dict{String, T}) where T
-    bytes_written = encode_long(encoder, Int64(length(value)))
+    # A block with count zero indicates the end of the map.
+    # [https://avro.apache.org/docs/current/spec.html]
+    l = Int64(length(value))
+    bytes_written = encode_long(encoder, l)
     for (k, v) in value
         bytes_written += encode_string(encoder, k)
         bytes_written += write(encoder, schema.values, v)
     end
-    bytes_written += encode_byte(encoder, zero(UInt8))
+    # If the first block was nonzero, create an empty 2nd block.
+    if l != 0
+        bytes_written += encode_byte(encoder, zero(UInt8))
+    end
     bytes_written
 end
 
