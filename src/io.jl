@@ -119,7 +119,7 @@ function decode_string(decoder::Decoder)
     String(decode_fixed(decoder, nb))
 end
 
-_decode_zigzag(n::Integer) = (n >>> 1) ⊻ -(n & 1)
+_decode_zigzag(n::T) where T <: Integer = (n >>> one(T)) ⊻ -(n & one(T))
 
 function _decode_varint(stream::IO, ::Type{T}) where T <: Integer
     max_bytes = sizeof(T) + ceil(Int, sizeof(T) / 8)
