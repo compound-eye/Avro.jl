@@ -532,13 +532,13 @@ function show(io::IO, schema::EnumSchema)
 end
 
 function show(io::IO, schema::ArraySchema)
-    write(io, "{type\":\"array\",\"items\":")
+    write(io, "{\"type\":\"array\",\"items\":")
     show(io, schema.items)
     write(io, "}")
 end
 
 function show(io::IO, schema::MapSchema)
-    write(io, "{type\":\"map\",\"values\":")
+    write(io, "{\"type\":\"map\",\"values\":")
     show(io, schema.values)
     write(io, "}")
 end
