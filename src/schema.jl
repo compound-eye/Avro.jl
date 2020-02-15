@@ -495,68 +495,92 @@ Equality definitions for schemas.
 """
 Show definitions for schemas to show them as JSON.
 """
-show(io::IO, name::FullName) = write(io, "\"$(name.value)\"")
+show(io::IO, name::FullName) = serialize(io::IO, name::FullName)
+serialize(io::IO, name::FullName, seen=Set{FullName}()) = write(io, "\"$(name.value)\"")
 
 for primitive_type in PRIMITIVE_TYPES
     primitive_json = "\"$primitive_type\""
     classname = Symbol(capitalize(primitive_type), "Schema")
     @eval begin
-        show(io::IO, ::$classname) = print(io, $primitive_json)
+        serialize(io::IO, ::$classname, seen=Set{FullName}()) = print(io, $primitive_json)
+        show(io::IO, x::$classname) = serialize(io::IO, x::$classname)
     end
 end
 
-function show(io::IO, field::Field)
+show(io::IO, field::Field) = serialize(io, field)
+function serialize(io::IO, field::Field, seen::Set{FullName}=Set{FullName}())
     write(io, "{\"name\":\"$(field.name)\",\"type\":")
-    show(io, field.schema)
+    serialize(io, field.schema, seen)
     write(io, "}")
 end
 
-function show(io::IO, schema::RecordSchema)
-    write(io, "{\"name\":")
-    show(io, schema.fullname)
-    write(io, ",\"type\":\"record\",\"fields\":[")
-    show(io, schema.fields[1])
-    for field in schema.fields[2:end]
-        write(io, ",")
-        show(io, field)
+show(io::IO, schema::RecordSchema) = serialize(io, schema)
+function serialize(io::IO, schema::RecordSchema, seen::Set{FullName}=Set{FullName}())
+    if schema.fullname in seen
+        serialize(io, schema.fullname, seen)
+    else
+        push!(seen, schema.fullname)
+        write(io, "{\"name\":")
+        serialize(io, schema.fullname, seen)
+        write(io, ",\"type\":\"record\",\"fields\":[")
+        serialize(io, schema.fields[1], seen)
+        for field in schema.fields[2:end]
+            write(io, ",")
+            serialize(io, field, seen)
+        end
+        write(io, "]}")
     end
-    write(io, "]}")
 end
 
-function show(io::IO, schema::EnumSchema)
-    write(io, "{\"name\":")
-    show(io, schema.fullname)
-    write(io, ",\"type\":\"enum\",\"symbols\":[")
-    write(io, join(["\"$symbol\"" for symbol in schema.symbols], ","))
-    write(io, "]}")
+show(io::IO, schema::EnumSchema) = serialize(io::IO, schema::EnumSchema)
+function serialize(io::IO, schema::EnumSchema, seen::Set{FullName}=Set{FullName}())
+    if schema.fullname in seen
+        serialize(io, schema.fullname, seen)
+    else
+        push!(seen, schema.fullname)
+        write(io, "{\"name\":")
+        serialize(io, schema.fullname, seen)
+        write(io, ",\"type\":\"enum\",\"symbols\":[")
+        write(io, join(["\"$symbol\"" for symbol in schema.symbols], ","))
+        write(io, "]}")
+    end
 end
 
-function show(io::IO, schema::ArraySchema)
-    write(io, "{type\":\"array\",\"items\":")
-    show(io, schema.items)
+show(io::IO, schema::ArraySchema) = serialize(io::IO, schema::ArraySchema)
+function serialize(io::IO, schema::ArraySchema, seen::Set{FullName}=Set{FullName}())
+    write(io, "{\"type\":\"array\",\"items\":")
+    serialize(io, schema.items, seen)
     write(io, "}")
 end
 
-function show(io::IO, schema::MapSchema)
-    write(io, "{type\":\"map\",\"values\":")
-    show(io, schema.values)
+show(io::IO, schema::MapSchema) = serialize(io::IO, schema::MapSchema)
+function serialize(io::IO, schema::MapSchema, seen::Set{FullName}=Set{FullName}())
+    write(io, "{\"type\":\"map\",\"values\":")
+    serialize(io, schema.values, seen)
     write(io, "}")
 end
 
-function show(io::IO, schema::UnionSchema)
+show(io::IO, schema::UnionSchema) = serialize(io::IO, schema::UnionSchema)
+function serialize(io::IO, schema::UnionSchema, seen::Set{FullName}=Set{FullName}())
     write(io, "[")
-    show(io, schema.schemas[1])
+    serialize(io, schema.schemas[1], seen)
     for item in schema.schemas[2:end]
         write(io, ",")
-        show(io, item)
+        serialize(io, item, seen)
     end
     write(io, "]")
 end
 
-function show(io::IO, schema::FixedSchema)
-    write(io, "{\"name\":")
-    show(io, schema.fullname)
-    write(io, ",\"type\":\"fixed\",\"size\":$(schema.size)}")
+show(io::IO, schema::FixedSchema) = serialize(io::IO, schema::FixedSchema)
+function serialize(io::IO, schema::FixedSchema, seen::Set{FullName}=Set{FullName}())
+    if schema.fullname in seen
+        serialize(io, schema.fullname, seen)
+    else
+        push!(seen, schema.fullname)
+        write(io, "{\"name\":")
+        serialize(io, schema.fullname)
+        write(io, ",\"type\":\"fixed\",\"size\":$(schema.size)}")
+    end
 end
 
 end
